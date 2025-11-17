@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>T900 Sweep Test Results</title>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .graph-container {
+            margin: 30px 0;
+            padding: 20px;
+            background: #fafafa;
+            border-radius: 4px;
+        }
+        .graph-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #555;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .info p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>T900 Sweep Test Results</h1>
+        <div class="info">
+            <p><strong>Test Configuration:</strong></p>
+            <p>Vary Mode: packet_size</p>
+            <p>Number of Packets: 10</p>
+            <p>Direction: Sender → Receiver</p>
+            <p>Repeats per Point: 2</p>
+            <p>Total Tests: 4</p>
+        </div>
+
+        <div class="graph-container">
+            <div class="graph-title">Data Rate (kbps)</div>
+            <div id="speed-graph"></div>
+            <script>
+                var data = [{"x": [500, 500, 1000, 1000], "y": [8.317990341498266, 8.319959597364168, 0.0, 0.0], "type": "scatter", "mode": "lines+markers", "name": "Speed Total (kbps)", "marker": {"color": "blue"}}, {"x": [500, 500, 1000, 1000], "y": [8.317990341498266, 8.319959597364168, 0.0, 0.0], "type": "scatter", "mode": "lines+markers", "name": "Speed Valid (kbps)", "marker": {"color": "green"}}, {"x": [500, 500, 1000, 1000], "y": [8.317990341498266, 8.319959597364168, 0.0, 0.0], "type": "scatter", "mode": "lines+markers", "name": "Send Rate (kbps)", "marker": {"color": "orange"}}];
+                var layout = {
+                    title: 'Data Rate vs Packet Size (bytes)',
+                    xaxis: { title: 'Packet Size (bytes)' },
+                    yaxis: { title: 'Data Rate (kbps)' },
+                    hovermode: 'closest'
+                };
+                Plotly.newPlot('speed-graph', data, layout);
+            </script>
+        </div>
+
+        <div class="graph-container">
+            <div class="graph-title">Latency (ms)</div>
+            <div id="latency-graph"></div>
+            <script>
+                var data = [{"x": [500, 500, 1000, 1000], "y": [88.17248344421387, 88.22183609008789, 138.36688465542264, 137.98769315083823], "type": "scatter", "mode": "lines+markers", "name": "Avg Latency (ms)", "marker": {"color": "blue"}}, {"x": [500, 500, 1000, 1000], "y": [78.31215858459473, 79.29468154907227, 128.55076789855957, 129.2874813079834], "type": "scatter", "mode": "lines+markers", "name": "Min Latency (ms)", "marker": {"color": "green"}}, {"x": [500, 500, 1000, 1000], "y": [97.0768928527832, 97.15104103088379, 146.98362350463867, 146.91424369812012], "type": "scatter", "mode": "lines+markers", "name": "Max Latency (ms)", "marker": {"color": "red"}}];
+                var layout = {
+                    title: 'Latency vs Packet Size (bytes)',
+                    xaxis: { title: 'Packet Size (bytes)' },
+                    yaxis: { title: 'Latency (ms)' },
+                    hovermode: 'closest'
+                };
+                Plotly.newPlot('latency-graph', data, layout);
+            </script>
+        </div>
+
+        <div class="graph-container">
+            <div class="graph-title">Packet Loss (%)</div>
+            <div id="packet-loss-graph"></div>
+            <script>
+                var data = [{"x": [500, 500, 1000, 1000], "y": [0.0, 0.0, 10.0, 10.0], "type": "scatter", "mode": "lines+markers", "name": "Packet Loss (%)", "marker": {"color": "red"}}];
+                var layout = {
+                    title: 'Packet Loss vs Packet Size (bytes)',
+                    xaxis: { title: 'Packet Size (bytes)' },
+                    yaxis: { title: 'Packet Loss (%)' },
+                    hovermode: 'closest'
+                };
+                Plotly.newPlot('packet-loss-graph', data, layout);
+            </script>
+        </div>
+
+        <div class="graph-container">
+            <div class="graph-title">Packet Corruption (%)</div>
+            <div id="corruption-graph"></div>
+            <script>
+                var data = [{"x": [500, 500, 1000, 1000], "y": [0.0, 0.0, 0.0, 0.0], "type": "scatter", "mode": "lines+markers", "name": "Corruption (%)", "marker": {"color": "purple"}}];
+                var layout = {
+                    title: 'Packet Corruption vs Packet Size (bytes)',
+                    xaxis: { title: 'Packet Size (bytes)' },
+                    yaxis: { title: 'Corruption (%)' },
+                    hovermode: 'closest'
+                };
+                Plotly.newPlot('corruption-graph', data, layout);
+            </script>
+        </div>
+
+    </div>
+</body>
+</html>
