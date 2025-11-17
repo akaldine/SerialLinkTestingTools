@@ -20,6 +20,8 @@ from collections import deque
 from typing import Optional, Tuple, List
 from datetime import datetime
 
+from t900_sweep_test_qt_gui import SweepTestDialog
+
 
 class T900DataRateTestQt(QMainWindow):
     log_signal = pyqtSignal(str)
@@ -31,6 +33,8 @@ class T900DataRateTestQt(QMainWindow):
         self.sender_connection: Optional[serial.Serial] = None
         self.num_receivers = 3
         self.receiver_connections: List[Optional[serial.Serial]] = [None] * self.num_receivers
+        self.sweep_dialog = None
+        self.current_write_interval = None
         
         self.test_running = False
         self.test_end_time = None
@@ -376,6 +380,10 @@ class T900DataRateTestQt(QMainWindow):
         self.clear_btn = QPushButton("Clear Results")
         self.clear_btn.clicked.connect(self._clear_results)
         control_layout.addWidget(self.clear_btn)
+        
+        self.sweep_btn = QPushButton("Sweep Test")
+        self.sweep_btn.clicked.connect(self._show_sweep_test)
+        control_layout.addWidget(self.sweep_btn)
         
         control_layout.addStretch()
         
@@ -1010,6 +1018,7 @@ class T900DataRateTestQt(QMainWindow):
         self.receiver_grace_period_end = None
         self.stats_mutex.unlock()
         
+        self.current_write_interval = write_freq
         self.test_running = True
         self.target_packets = target_packets
         self.test_end_time = time.time() + test_length if test_length else None
@@ -1172,12 +1181,19 @@ class T900DataRateTestQt(QMainWindow):
                     sent = self.stats['packets_sent']
                     self.stats_mutex.unlock()
                     if sent >= self.target_packets:
-                        self._log(f"Target of {self.target_packets} packets sent - auto-stopping...")
+                        self._log(f"Target of {self.target_packets} packets sent - waiting for final interval...")
                         # Capture end_time NOW (when target packets are sent)
                         self.stats['end_time'] = time.time()
                         self.test_running = False
-                        self.receiver_grace_period_end = None
-                        # Stop immediately for packet-count mode
+                        
+                        extra_wait = self.current_write_interval or 0
+                        if extra_wait > 0:
+                            self.receiver_grace_period_end = time.time() + extra_wait
+                            time.sleep(extra_wait)
+                        else:
+                            self.receiver_grace_period_end = None
+                        
+                        self._log("Auto-stopping after final interval...")
                         QTimer.singleShot(0, self._stop_test)
                         break
                 elif self.test_end_time:
@@ -1248,8 +1264,20 @@ class T900DataRateTestQt(QMainWindow):
         self._log("=" * 50)
         self._log(f"Data Rate (Total): {self.stats.get('data_rate_total_bps', 0):.2f} bps ({self.stats.get('data_rate_total_kbps', 0):.2f} kbps)")
         self._log(f"Data Rate (Valid): {self.stats.get('data_rate_valid_bps', 0):.2f} bps ({self.stats.get('data_rate_valid_kbps', 0):.2f} kbps)")
-        self._log(f"Packet loss: {self._calculate_packet_loss():.2f}%")
-        self._log(f"Corrupt packets: {self._calculate_corruption():.2f}%")
+        if self.stats['packets_sent'] > 0:
+            loss_percent = ((self.stats['packets_sent'] - self.stats['packets_received']) /
+                            self.stats['packets_sent']) * 100.0
+        else:
+            loss_percent = 0.0
+        self._log(f"Packet loss: {loss_percent:.2f}%")
+        
+        total_received = self.stats['packets_received']
+        total_corrupt = self.stats['packets_corrupt']
+        if total_received > 0:
+            corrupt_percent = (total_corrupt / total_received) * 100.0
+        else:
+            corrupt_percent = 0.0
+        self._log(f"Corrupt packets: {corrupt_percent:.2f}%")
         
         # Update button states
         if hasattr(self, 'start_btn') and self.start_btn is not None:
@@ -1452,10 +1480,19 @@ class T900DataRateTestQt(QMainWindow):
         self.stats['data_rate_valid_kbps'] = None
         self.stats['send_rate_bps'] = None
         self.stats['send_rate_kbps'] = None
+        self.current_write_interval = None
         self.stats_mutex.unlock()
         
         self.log_text.clear()
         self._update_statistics()
+
+    def _show_sweep_test(self):
+        """Open the sweep test dialog"""
+        if self.sweep_dialog is None:
+            self.sweep_dialog = SweepTestDialog(self, self)
+        self.sweep_dialog.show()
+        self.sweep_dialog.raise_()
+        self.sweep_dialog.activateWindow()
 
 
 def main():
