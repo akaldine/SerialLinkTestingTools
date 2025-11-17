@@ -37,7 +37,6 @@ class T900DataRateTestQt(QMainWindow):
         self.target_packets = None
         self.receiver_grace_period_end = None
         self.grace_period_data_received = False
-        self.packet_count_wait_end = None
         self.test_thread: Optional[threading.Thread] = None
         self.receiver_threads: List[Optional[threading.Thread]] = [None] * self.num_receivers
         self.monitor_thread: Optional[threading.Thread] = None
@@ -153,7 +152,7 @@ class T900DataRateTestQt(QMainWindow):
         layout = QVBoxLayout(parent)
         
         # Connection settings
-        conn_group = QGroupBox("Connection Settings")
+        conn_group = QGroupBox("Connections")
         conn_layout = QVBoxLayout(conn_group)
         
         # Refresh button
@@ -161,45 +160,43 @@ class T900DataRateTestQt(QMainWindow):
         refresh_btn.clicked.connect(self._refresh_ports)
         conn_layout.addWidget(refresh_btn)
         
-        # Sender and receiver side by side
-        conn_hbox = QHBoxLayout()
+        # Combined connections layout (sender + receivers)
+        connections_layout = QGridLayout()
+        connections_layout.setSpacing(12)
+        connections_layout.setColumnStretch(0, 1)
+        connections_layout.setColumnStretch(1, 1)
         
-        # Sender frame
+        # Sender block
         sender_group = QGroupBox("Sender")
         sender_layout = QGridLayout(sender_group)
-        
         sender_layout.addWidget(QLabel("Port:"), 0, 0)
         self.sender_port_combo = QComboBox()
         sender_layout.addWidget(self.sender_port_combo, 0, 1)
-        
         sender_layout.addWidget(QLabel("Baud Rate:"), 1, 0)
         self.sender_baud_combo = QComboBox()
         self.sender_baud_combo.addItems(["4800", "7200", "9600", "14400", "19200", "28800", 
                                         "38400", "57600", "115200", "230400", "460800", "921600"])
         self.sender_baud_combo.setCurrentText("230400")
         sender_layout.addWidget(self.sender_baud_combo, 1, 1)
-        
         self.sender_connect_btn = QPushButton("Connect")
         self.sender_connect_btn.clicked.connect(self._connect_sender)
         sender_layout.addWidget(self.sender_connect_btn, 2, 0, 1, 2)
-        
         self.sender_status_label = QLabel("Disconnected")
         self.sender_status_label.setStyleSheet("color: red;")
         sender_layout.addWidget(self.sender_status_label, 3, 0, 1, 2)
         
-        # Receivers frame (multiple)
-        receivers_group = QGroupBox("Receivers")
-        receivers_layout = QHBoxLayout(receivers_group)
+        connections_layout.addWidget(sender_group, 0, 0)
         
+        # Receivers (reuse same grid grid)
         self.receiver_port_combos.clear()
         self.receiver_baud_combos.clear()
         self.receiver_connect_btns.clear()
         self.receiver_status_labels.clear()
         
+        receiver_positions = [(0, 1), (1, 0), (1, 1)]
         for idx in range(self.num_receivers):
             group = QGroupBox(f"Receiver {idx + 1}")
             grid = QGridLayout(group)
-            
             grid.addWidget(QLabel("Port:"), 0, 0)
             port_combo = QComboBox()
             self.receiver_port_combos.append(port_combo)
@@ -223,12 +220,10 @@ class T900DataRateTestQt(QMainWindow):
             self.receiver_status_labels.append(status_label)
             grid.addWidget(status_label, 3, 0, 1, 2)
             
-            receivers_layout.addWidget(group)
+            row, col = receiver_positions[idx]
+            connections_layout.addWidget(group, row, col)
         
-        conn_hbox.addWidget(sender_group)
-        conn_hbox.addWidget(receivers_group)
-        conn_layout.addLayout(conn_hbox)
-        
+        conn_layout.addLayout(connections_layout)
         layout.addWidget(conn_group)
         
         # Test parameters
@@ -350,13 +345,9 @@ class T900DataRateTestQt(QMainWindow):
         self.speed_params_widget.hide()
         self.packet_count_params_widget.hide()
         
-        # Direction
+        # Direction (fixed)
         direction_layout = QHBoxLayout()
-        direction_layout.addWidget(QLabel("Direction:"))
-        self.direction_combo = QComboBox()
-        self.direction_combo.addItems(["Bidirectional", "Sender → Receiver", "Receiver → Sender"])
-        direction_layout.addWidget(self.direction_combo)
-        direction_layout.addWidget(QLabel("(Communication direction)"))
+        direction_layout.addWidget(QLabel("Direction: Sender → Receiver (fixed)"))
         direction_layout.addStretch()
         test_layout.addLayout(direction_layout)
         
@@ -454,7 +445,8 @@ class T900DataRateTestQt(QMainWindow):
         
     def _refresh_ports(self):
         """Refresh available serial ports"""
-        ports = [port.device for port in serial.tools.list_ports.comports()]
+        all_ports = [port.device for port in serial.tools.list_ports.comports()]
+        ports = [port for port in all_ports if port.startswith("/dev/ttyUSB")]
         self.sender_port_combo.clear()
         self.sender_port_combo.addItems(ports)
         
@@ -467,6 +459,10 @@ class T900DataRateTestQt(QMainWindow):
             for idx, combo in enumerate(self.receiver_port_combos):
                 default_index = min(idx + 1, len(ports) - 1)
                 combo.setCurrentIndex(default_index)
+        else:
+            self.sender_port_combo.setCurrentIndex(-1)
+            for combo in self.receiver_port_combos:
+                combo.setCurrentIndex(-1)
     
     def _connect_sender(self):
         """Connect to sender port"""
@@ -1011,18 +1007,13 @@ class T900DataRateTestQt(QMainWindow):
         self.stats['start_time'] = time.time()
         self.stats['end_time'] = None
         self.stats['elapsed_time'] = None
+        self.receiver_grace_period_end = None
         self.stats_mutex.unlock()
         
         self.test_running = True
         self.target_packets = target_packets
         self.test_end_time = time.time() + test_length if test_length else None
         self.receiver_threads = [None] * self.num_receivers
-        
-        direction = self.direction_combo.currentText()
-        if direction != "Sender → Receiver":
-            QMessageBox.warning(self, "Unsupported Direction",
-                                "Multi-receiver mode currently supports only 'Sender → Receiver'.")
-            return
         
         missing_receivers = [idx for idx, conn in enumerate(self.receiver_connections)
                              if conn is None or not hasattr(conn, 'is_open') or not conn.is_open]
@@ -1132,7 +1123,9 @@ class T900DataRateTestQt(QMainWindow):
         buffer = b''
         latency_store = self.receiver_stats[receiver_index]['latency_samples']
         
-        while self.test_running or (self.packet_count_wait_end and time.time() < self.packet_count_wait_end):
+        while self.test_running or (
+            self.receiver_grace_period_end is not None and time.time() < self.receiver_grace_period_end
+        ):
             try:
                 if conn.in_waiting > 0:
                     data = conn.read(conn.in_waiting)
@@ -1179,27 +1172,12 @@ class T900DataRateTestQt(QMainWindow):
                     sent = self.stats['packets_sent']
                     self.stats_mutex.unlock()
                     if sent >= self.target_packets:
-                        self._log(f"Target of {self.target_packets} packets sent - waiting for reception (max 1s)...")
+                        self._log(f"Target of {self.target_packets} packets sent - auto-stopping...")
                         # Capture end_time NOW (when target packets are sent)
                         self.stats['end_time'] = time.time()
                         self.test_running = False
-                        
-                        # Wait up to 1 second for packets to be received
-                        self.packet_count_wait_end = time.time() + 1.0
-                        wait_start = time.time()
-                        wait_timeout = 1.0
-                        while time.time() - wait_start < wait_timeout:
-                            self.stats_mutex.lock()
-                            total_received = self.stats.get('packets_received', 0)
-                            self.stats_mutex.unlock()
-                            
-                            if total_received >= self.target_packets:
-                                self._log(f"All {self.target_packets} packets received")
-                                break
-                            time.sleep(0.05)  # Check every 50ms
-                        
-                        # Now actually stop the test
-                        self._log("Auto-stopping after packet-count wait...")
+                        self.receiver_grace_period_end = None
+                        # Stop immediately for packet-count mode
                         QTimer.singleShot(0, self._stop_test)
                         break
                 elif self.test_end_time:
@@ -1223,8 +1201,8 @@ class T900DataRateTestQt(QMainWindow):
     
     def _stop_test(self):
         """Stop the test and calculate final statistics"""
-        if not self.test_running and self.stats['end_time'] is not None:
-            # Already stopped
+        if not self.test_running and self.stats.get('elapsed_time') is not None:
+            # Already stopped and finalized
             return
         
         self.test_running = False
@@ -1252,37 +1230,14 @@ class T900DataRateTestQt(QMainWindow):
             self.stats['elapsed_time'] = elapsed
             
             if elapsed > 0:
-                # Calculate data rates
-                direction = self.direction_combo.currentText()
-                
-                if direction == "Bidirectional":
-                    # Calculate rates for both directions
-                    self.stats['data_rate_total_bps_1'] = (self.stats['bytes_received_total'] * 8) / elapsed
-                    self.stats['data_rate_total_kbps_1'] = self.stats['data_rate_total_bps_1'] / 1000
-                    self.stats['data_rate_valid_bps_1'] = (self.stats['bytes_received_valid'] * 8) / elapsed
-                    self.stats['data_rate_valid_kbps_1'] = self.stats['data_rate_valid_bps_1'] / 1000
-                    
-                    self.stats['data_rate_total_bps_2'] = (self.stats['bytes_received_total_2'] * 8) / elapsed
-                    self.stats['data_rate_total_kbps_2'] = self.stats['data_rate_total_bps_2'] / 1000
-                    self.stats['data_rate_valid_bps_2'] = (self.stats['bytes_received_valid_2'] * 8) / elapsed
-                    self.stats['data_rate_valid_kbps_2'] = self.stats['data_rate_valid_bps_2'] / 1000
-                    
-                    # Combined rates
-                    total_bytes = self.stats['bytes_received_total'] + self.stats['bytes_received_total_2']
-                    valid_bytes = self.stats['bytes_received_valid'] + self.stats['bytes_received_valid_2']
-                    self.stats['data_rate_total_bps_combined'] = (total_bytes * 8) / elapsed
-                    self.stats['data_rate_total_kbps_combined'] = self.stats['data_rate_total_bps_combined'] / 1000
-                    self.stats['data_rate_valid_bps_combined'] = (valid_bytes * 8) / elapsed
-                    self.stats['data_rate_valid_kbps_combined'] = self.stats['data_rate_valid_bps_combined'] / 1000
-                else:
-                    # Unidirectional
-                    self.stats['data_rate_total_bps'] = (self.stats['bytes_received_total'] * 8) / elapsed
-                    self.stats['data_rate_total_kbps'] = self.stats['data_rate_total_bps'] / 1000
-                    self.stats['data_rate_valid_bps'] = (self.stats['bytes_received_valid'] * 8) / elapsed
-                    self.stats['data_rate_valid_kbps'] = self.stats['data_rate_valid_bps'] / 1000
+                # Calculate data rates (unidirectional)
+                self.stats['data_rate_total_bps'] = (self.stats['bytes_received_total'] * 8) / elapsed
+                self.stats['data_rate_total_kbps'] = self.stats['data_rate_total_bps'] / 1000
+                self.stats['data_rate_valid_bps'] = (self.stats['bytes_received_valid'] * 8) / elapsed
+                self.stats['data_rate_valid_kbps'] = self.stats['data_rate_valid_bps'] / 1000
                 
                 # Calculate send rate
-                total_sent = self.stats['bytes_sent'] + (self.stats.get('bytes_sent_2', 0) if direction == "Bidirectional" else 0)
+                total_sent = self.stats['bytes_sent']
                 self.stats['send_rate_bps'] = (total_sent * 8) / elapsed
                 self.stats['send_rate_kbps'] = self.stats['send_rate_bps'] / 1000
         
