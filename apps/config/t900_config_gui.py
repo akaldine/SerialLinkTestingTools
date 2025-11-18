@@ -267,7 +267,7 @@ class T900ConfigGUI:
         timeout_entry = ttk.Entry(settings_frame, textvariable=self.timeout_var, width=20)
         timeout_entry.grid(row=2, column=1, padx=5, pady=2)
         
-        # AT Mode entry option (removed - no longer automatic)
+        # AT Mode entry option (managed automatically on connect/disconnect)
         
         # Connection buttons
         button_frame = ttk.Frame(frame)
@@ -496,12 +496,12 @@ class T900ConfigGUI:
             
             self.connect_button.config(state=tk.DISABLED)
             self.disconnect_button.config(state=tk.NORMAL)
-            self.enter_at_button.config(state=tk.NORMAL)
+            self.enter_at_button.config(state=tk.DISABLED)
             self.exit_at_button.config(state=tk.DISABLED)
             self.status_label.config(text=f"Connected to {port} @ {baud} baud", foreground="green")
             
             self._log_console(f"Connected to {port} at {baud} baud")
-            
+            self._enter_at_mode(auto=True)
         except Exception as e:
             messagebox.showerror("Connection Error", f"Failed to connect: {str(e)}")
             self._log_console(f"Connection failed: {str(e)}")
@@ -522,10 +522,11 @@ class T900ConfigGUI:
         self.status_label.config(text="Disconnected", foreground="red")
         self._log_console("Disconnected")
     
-    def _enter_at_mode(self):
+    def _enter_at_mode(self, auto: bool = False):
         """Enter AT command configuration mode from data mode"""
         if not self.serial_connection or not self.serial_connection.is_open:
-            messagebox.showwarning("Not Connected", "Please connect to a device first")
+            if not auto:
+                messagebox.showwarning("Not Connected", "Please connect to a device first")
             return
         
         try:
