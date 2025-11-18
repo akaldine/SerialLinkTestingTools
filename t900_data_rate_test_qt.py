@@ -164,7 +164,6 @@ class T900DataRateTestQt(QMainWindow):
         
         conn_layout.addLayout(connections_layout)
         layout.addWidget(conn_group)
-        self._update_receiver_visibility()
         
         # Test parameters
         test_group = QGroupBox("Test Parameters")
@@ -332,6 +331,7 @@ class T900DataRateTestQt(QMainWindow):
         self._update_speed_based_calculations()
         self._update_manual_data_rate()
         self._update_packet_count_calculations()
+        self._update_receiver_visibility()
     
     def _create_results_pane(self, parent):
         """Create results display panel"""
