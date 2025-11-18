@@ -714,7 +714,12 @@ class T900ConfigGUI:
         for line in lines:
             if '=' in line:
                 return line.split('=', 1)[1].strip()
-        return lines[0] if lines else None
+        for line in lines:
+            upper = line.upper()
+            if line.startswith("AT") or "?" in line or upper == "OK":
+                continue
+            return line
+        return None
     
     def _apply_register_value(self, reg_name: str, value: str):
         """Set the GUI widget to the parsed register value"""
