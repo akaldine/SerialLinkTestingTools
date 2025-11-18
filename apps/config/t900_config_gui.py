@@ -256,9 +256,9 @@ class T900ConfigGUI:
         ttk.Button(settings_frame, text="Refresh", command=self._refresh_ports).grid(row=0, column=2, padx=5)
         
         ttk.Label(settings_frame, text="Baud Rate:").grid(row=1, column=0, sticky=tk.W, pady=2)
-        self.baud_var = tk.StringVar(value="9600")
+        self.baud_var = tk.StringVar(value="230400")
         baud_combo = ttk.Combobox(settings_frame, textvariable=self.baud_var, 
-                                  values=["9600", "115200", "57600", "38400", "19200", "14400"],
+                                  values=["230400", "115200", "9600", "57600", "38400", "19200", "14400"],
                                   width=20)
         baud_combo.grid(row=1, column=1, padx=5, pady=2)
         
@@ -472,10 +472,13 @@ class T900ConfigGUI:
         
     def _refresh_ports(self):
         """Refresh available serial ports"""
-        ports = [port.device for port in serial.tools.list_ports.comports()]
+        all_ports = [port.device for port in serial.tools.list_ports.comports()]
+        ports = [port for port in all_ports if port.startswith("/dev/ttyUSB")]
         self.port_combo['values'] = ports
         if ports:
             self.port_combo.set(ports[0])
+        else:
+            self.port_combo.set("")
     
     def _connect(self):
         """Connect to serial port"""
