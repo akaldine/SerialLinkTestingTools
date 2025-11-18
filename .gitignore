@@ -9,5 +9,7 @@ results/
 *
 !*/
 !*.py
+!README.md
+!requirements.txt
 !.gitignore
 
