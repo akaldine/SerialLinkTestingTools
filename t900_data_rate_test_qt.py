@@ -38,6 +38,7 @@ class T900DataRateTestQt(QMainWindow):
         self.receiver_baud_combos: List[QComboBox] = []
         self.receiver_connect_btns: List[QPushButton] = []
         self.receiver_status_labels: List[QLabel] = []
+        self.receiver_group_widgets: List[QGroupBox] = []
         
         # Update timer for real-time statistics
         self.update_timer = QTimer()
@@ -85,6 +86,17 @@ class T900DataRateTestQt(QMainWindow):
         refresh_btn.clicked.connect(self._refresh_ports)
         conn_layout.addWidget(refresh_btn)
         
+        # Receiver count selector
+        count_layout = QHBoxLayout()
+        count_layout.addWidget(QLabel("Receiver Count:"))
+        self.receiver_count_combo = QComboBox()
+        self.receiver_count_combo.addItems([str(i) for i in range(1, self.viewmodel.num_receivers + 1)])
+        self.receiver_count_combo.setCurrentIndex(self.viewmodel.active_receivers - 1)
+        self.receiver_count_combo.currentTextChanged.connect(self._on_receiver_count_changed)
+        count_layout.addWidget(self.receiver_count_combo)
+        count_layout.addStretch()
+        conn_layout.addLayout(count_layout)
+        
         # Combined connections layout (sender + receivers)
         connections_layout = QGridLayout()
         connections_layout.setSpacing(12)
@@ -117,6 +129,7 @@ class T900DataRateTestQt(QMainWindow):
         self.receiver_baud_combos.clear()
         self.receiver_connect_btns.clear()
         self.receiver_status_labels.clear()
+        self.receiver_group_widgets.clear()
         
         receiver_positions = [(0, 1), (1, 0), (1, 1)]
         for idx in range(self.viewmodel.num_receivers):
@@ -144,12 +157,14 @@ class T900DataRateTestQt(QMainWindow):
             status_label.setStyleSheet("color: red;")
             self.receiver_status_labels.append(status_label)
             grid.addWidget(status_label, 3, 0, 1, 2)
+            self.receiver_group_widgets.append(group)
             
             row, col = receiver_positions[idx]
             connections_layout.addWidget(group, row, col)
         
         conn_layout.addLayout(connections_layout)
         layout.addWidget(conn_group)
+        self._update_receiver_visibility()
         
         # Test parameters
         test_group = QGroupBox("Test Parameters")
@@ -431,6 +446,37 @@ class T900DataRateTestQt(QMainWindow):
         else:
             QMessageBox.critical(self, "Connection Error", message)
     
+    def _on_receiver_count_changed(self, text: str):
+        """Handle receiver count selection"""
+        if self.viewmodel.test_running:
+            # Revert UI to current active count
+            self.receiver_count_combo.blockSignals(True)
+            self.receiver_count_combo.setCurrentIndex(self.viewmodel.active_receivers - 1)
+            self.receiver_count_combo.blockSignals(False)
+            return
+        try:
+            count = int(text)
+        except ValueError:
+            return
+        self.viewmodel.set_active_receivers(count)
+        self._update_receiver_visibility()
+    
+    def _update_receiver_visibility(self):
+        """Show/hide receiver groups based on active count"""
+        active = self.viewmodel.active_receivers
+        for idx, group in enumerate(self.receiver_group_widgets):
+            visible = idx < active
+            group.setVisible(visible)
+            status_label = self.receiver_status_labels[idx]
+            if not visible:
+                status_label.setText("Inactive")
+                status_label.setStyleSheet("color: gray;")
+            else:
+                if status_label.text() == "Inactive":
+                    status_label.setText("Disconnected")
+                    status_label.setStyleSheet("color: red;")
+        self._update_button_states()
+    
     def _update_button_states(self):
         """Update button states based on connection status"""
         can_start = self.viewmodel.can_start_test()
@@ -455,9 +501,13 @@ class T900DataRateTestQt(QMainWindow):
         if running:
             self.start_btn.setEnabled(False)
             self.stop_btn.setEnabled(True)
+            if hasattr(self, 'receiver_count_combo'):
+                self.receiver_count_combo.setEnabled(False)
         else:
             self.start_btn.setEnabled(self.viewmodel.can_start_test())
             self.stop_btn.setEnabled(False)
+            if hasattr(self, 'receiver_count_combo'):
+                self.receiver_count_combo.setEnabled(True)
     
     def _on_connection_changed(self):
         """Handle connection changed signal"""
@@ -707,35 +757,49 @@ class T900DataRateTestQt(QMainWindow):
             self.stats_labels['sender_test_duration'].setText("N/A")
         
         # Receiver columns (all values are pre-calculated in ViewModel)
+        active_receivers = self.viewmodel.active_receivers
         for idx, rstat in enumerate(receiver_stats):
             rate_label = self.stats_labels.get(f"receiver_{idx}_valid_rate")
+            inactive = idx >= active_receivers
             if rate_label:
-                if rstat['valid_rate_kbps'] is not None:
+                if inactive:
+                    rate_label.setText("Inactive")
+                elif rstat['valid_rate_kbps'] is not None:
                     rate_label.setText(f"{rstat['valid_rate_kbps']:.2f} kbps")
                 else:
                     rate_label.setText("N/A")
             
             loss_label = self.stats_labels.get(f"receiver_{idx}_packet_loss")
             if loss_label:
-                if rstat['packet_loss'] is not None:
+                if inactive:
+                    loss_label.setText("Inactive")
+                elif rstat['packet_loss'] is not None:
                     loss_label.setText(f"{rstat['packet_loss']:.2f}%")
                 else:
                     loss_label.setText("N/A")
             
             latency_label = self.stats_labels.get(f"receiver_{idx}_avg_latency")
             if latency_label:
-                if rstat['avg_latency'] is not None:
+                if inactive:
+                    latency_label.setText("Inactive")
+                elif rstat['avg_latency'] is not None:
                     latency_label.setText(f"{rstat['avg_latency']:.2f} ms")
                 else:
                     latency_label.setText("N/A")
             
             packets_label = self.stats_labels.get(f"receiver_{idx}_packets_received")
             if packets_label:
-                packets_label.setText(str(rstat['packets_received']))
+                if inactive:
+                    packets_label.setText("Inactive")
+                else:
+                    packets_label.setText(str(rstat['packets_received']))
             
             bytes_label = self.stats_labels.get(f"receiver_{idx}_bytes_received")
             if bytes_label:
-                bytes_label.setText(str(rstat['bytes_received_total']))
+                if inactive:
+                    bytes_label.setText("Inactive")
+                else:
+                    bytes_label.setText(str(rstat['bytes_received_total']))
     
     def _show_sweep_test(self):
         """Open the sweep test dialog"""

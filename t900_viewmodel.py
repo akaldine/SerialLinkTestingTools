@@ -38,6 +38,7 @@ class T900DataRateViewModel(QObject):
     def __init__(self, num_receivers: int = 3):
         super().__init__()
         self.num_receivers = num_receivers
+        self.active_receivers = num_receivers
         
         # Serial connections
         self.sender_connection: Optional[serial.Serial] = None
@@ -85,21 +86,29 @@ class T900DataRateViewModel(QObject):
         # Per-receiver statistics
         self.receiver_stats: List[Dict[str, Any]] = []
         for _ in range(num_receivers):
-            self.receiver_stats.append({
-                'bytes_received_total': 0,
-                'bytes_received_valid': 0,
-                'packets_received': 0,
-                'packets_corrupt': 0,
-                'latency_samples': deque(maxlen=1000),
-                'valid_rate_bps': None,
-                'valid_rate_kbps': None,
-                'packet_loss': None,
-                'avg_latency': None,
-            })
+            self.receiver_stats.append(self._create_empty_receiver_stats())
         
         self.packet_header_size = 44  # 4 + 8 + 32
         self.stats_mutex = QMutex()
     
+    def _create_empty_receiver_stats(self) -> Dict[str, Any]:
+        return {
+            'bytes_received_total': 0,
+            'bytes_received_valid': 0,
+            'packets_received': 0,
+            'packets_corrupt': 0,
+            'latency_samples': deque(maxlen=1000),
+            'valid_rate_bps': None,
+            'valid_rate_kbps': None,
+            'packet_loss': None,
+            'avg_latency': None,
+        }
+
+    def _reset_receiver_stats(self, index: Optional[int] = None):
+        targets = range(self.num_receivers) if index is None else [index]
+        for idx in targets:
+            self.receiver_stats[idx] = self._create_empty_receiver_stats()
+
     def get_available_ports(self) -> List[str]:
         """Get list of available serial ports (filtered to /dev/ttyUSB*)"""
         all_ports = [port.device for port in serial.tools.list_ports.comports()]
@@ -143,6 +152,8 @@ class T900DataRateViewModel(QObject):
         try:
             if index < 0 or index >= self.num_receivers:
                 return (False, f"Invalid receiver index: {index}")
+            if index >= self.active_receivers:
+                return (False, f"Receiver {index + 1} is currently inactive")
             
             current_conn = self.receiver_connections[index]
             if current_conn is not None and current_conn.is_open:
@@ -186,7 +197,8 @@ class T900DataRateViewModel(QObject):
     
     def are_all_receivers_connected(self) -> bool:
         """Check if all receivers are connected"""
-        for conn in self.receiver_connections:
+        for idx in range(self.active_receivers):
+            conn = self.receiver_connections[idx]
             if conn is None or not hasattr(conn, 'is_open') or not conn.is_open:
                 return False
         return True
@@ -196,6 +208,23 @@ class T900DataRateViewModel(QObject):
         return (not self.test_running and 
                 self.is_sender_connected() and 
                 self.are_all_receivers_connected())
+
+    def set_active_receivers(self, count: int):
+        """Set how many receivers are active (1..num_receivers)"""
+        count = max(1, min(count, self.num_receivers))
+        if count == self.active_receivers:
+            return
+        previous = self.active_receivers
+        if count < self.active_receivers:
+            for idx in range(count, self.active_receivers):
+                self.disconnect_receiver(idx)
+                self._reset_receiver_stats(idx)
+        self.active_receivers = count
+        if count > previous:
+            for idx in range(previous, count):
+                self._reset_receiver_stats(idx)
+        self.connection_changed.emit()
+        self.stats_changed.emit()
     
     def start_test(self, config: TestConfig):
         """Start a test with the given configuration"""
@@ -254,8 +283,9 @@ class T900DataRateViewModel(QObject):
         elif config.target_packets:
             self._log(f"Test will stop after {config.target_packets} packets sent")
         
-        # Start receiver threads
-        for idx, conn in enumerate(self.receiver_connections):
+        # Start receiver threads (only active receivers)
+        for idx in range(self.active_receivers):
+            conn = self.receiver_connections[idx]
             self._log(f"Starting receiver {idx + 1}")
             thread = threading.Thread(
                 target=self._receiver_thread,
@@ -371,7 +401,8 @@ class T900DataRateViewModel(QObject):
         # Per-receiver statistics
         self._log("")
         self._log("=== Per-Receiver Statistics ===")
-        for idx, rstat in enumerate(self.receiver_stats):
+        for idx in range(self.active_receivers):
+            rstat = self.receiver_stats[idx]
             self._log(f"--- Receiver {idx + 1} ---")
             self._log(f"  Bytes Received (Total): {rstat.get('bytes_received_total', 0)}")
             self._log(f"  Bytes Received (Valid): {rstat.get('bytes_received_valid', 0)}")
@@ -618,12 +649,13 @@ class T900DataRateViewModel(QObject):
     
     def _recalculate_receiver_totals(self):
         """Aggregate receiver statistics into legacy fields"""
-        total_packets_received = sum(r['packets_received'] for r in self.receiver_stats)
-        total_corrupt = sum(r['packets_corrupt'] for r in self.receiver_stats)
-        total_bytes = sum(r['bytes_received_total'] for r in self.receiver_stats)
-        total_valid_bytes = sum(r['bytes_received_valid'] for r in self.receiver_stats)
+        active_stats = self.receiver_stats[:self.active_receivers] if self.active_receivers > 0 else []
+        receiver_count = len(active_stats) if active_stats else 1
         
-        receiver_count = len(self.receiver_stats) if self.receiver_stats else 1
+        total_packets_received = sum(r['packets_received'] for r in active_stats)
+        total_corrupt = sum(r['packets_corrupt'] for r in active_stats)
+        total_bytes = sum(r['bytes_received_total'] for r in active_stats)
+        total_valid_bytes = sum(r['bytes_received_valid'] for r in active_stats)
         
         avg_packets_received = total_packets_received / receiver_count
         avg_corrupt = total_corrupt / receiver_count
@@ -823,8 +855,10 @@ class T900DataRateViewModel(QObject):
         if not self.is_sender_connected():
             return False
         
-        disconnected = [idx for idx, conn in enumerate(self.receiver_connections)
-                        if conn is None or not hasattr(conn, 'is_open') or not conn.is_open]
+        disconnected = [idx for idx in range(self.active_receivers)
+                        if (self.receiver_connections[idx] is None or
+                            not hasattr(self.receiver_connections[idx], 'is_open') or
+                            not self.receiver_connections[idx].is_open)]
         if disconnected:
             return False
         
@@ -833,7 +867,8 @@ class T900DataRateViewModel(QObject):
         self.rssi_current['sender'] = sender_rssi
         self._log(f"Sender RSSI -> S123: {sender_rssi['S123']} dBm, S124: {sender_rssi['S124']} dBm")
         
-        for idx, conn in enumerate(self.receiver_connections):
+        for idx in range(self.active_receivers):
+            conn = self.receiver_connections[idx]
             rssi = self._read_rssi_from_device(f"Receiver {idx + 1}", conn)
             self.rssi_current['receivers'][idx] = rssi
             self._log(f"Receiver {idx + 1} RSSI -> S123: {rssi['S123']} dBm, S124: {rssi['S124']} dBm")
@@ -867,12 +902,25 @@ class T900DataRateViewModel(QObject):
         # Calculate per-receiver statistics
         packets_sent_total = self.stats['packets_sent']
         if elapsed_for_rates and elapsed_for_rates > 0:
-            for rstat in self.receiver_stats:
-                rstat['valid_rate_bps'] = (rstat['bytes_received_valid'] * 8) / elapsed_for_rates
-                rstat['valid_rate_kbps'] = rstat['valid_rate_bps'] / 1000
+            for idx, rstat in enumerate(self.receiver_stats):
+                if idx < self.active_receivers:
+                    rstat['valid_rate_bps'] = (rstat['bytes_received_valid'] * 8) / elapsed_for_rates
+                    rstat['valid_rate_kbps'] = rstat['valid_rate_bps'] / 1000
+                else:
+                    rstat['valid_rate_bps'] = None
+                    rstat['valid_rate_kbps'] = None
+        else:
+            for idx, rstat in enumerate(self.receiver_stats):
+                if idx >= self.active_receivers:
+                    rstat['valid_rate_bps'] = None
+                    rstat['valid_rate_kbps'] = None
         
         # Calculate packet loss and average latency for each receiver
-        for rstat in self.receiver_stats:
+        for idx, rstat in enumerate(self.receiver_stats):
+            if idx >= self.active_receivers:
+                rstat['packet_loss'] = None
+                rstat['avg_latency'] = None
+                continue
             # Packet loss percentage
             if packets_sent_total > 0:
                 rstat['packet_loss'] = ((packets_sent_total - rstat['packets_received']) / packets_sent_total) * 100.0

@@ -182,9 +182,9 @@ class SweepTestDialog(QDialog):
             QMessageBox.critical(self, "Error", "Sender not connected")
             return False
         if not viewmodel.are_all_receivers_connected():
-            for idx in range(viewmodel.num_receivers):
-                if (viewmodel.receiver_connections[idx] is None or 
-                    not viewmodel.receiver_connections[idx].is_open):
+            for idx in range(viewmodel.active_receivers):
+                conn = viewmodel.receiver_connections[idx]
+                if conn is None or not conn.is_open:
                     QMessageBox.critical(self, "Error", f"Receiver {idx + 1} not connected")
                     return False
         return True
