@@ -405,7 +405,12 @@ class T900ConfigGUI:
                                     width=30, state='readonly')
                 combo.set(reg_info['default'])
                 combo.pack(side=tk.LEFT)
-                self.register_widgets[reg_name] = {'var': var, 'type': 'choice', 'widget': combo}
+                self.register_widgets[reg_name] = {
+                    'var': var,
+                    'type': 'choice',
+                    'widget': combo,
+                    'values': reg_info['values']
+                }
                 
             elif reg_info['type'] == 'number':
                 var = tk.StringVar(value=reg_info['default'])
@@ -501,6 +506,8 @@ class T900ConfigGUI:
     def _disconnect(self):
         """Disconnect from serial port"""
         if self.serial_connection and self.serial_connection.is_open:
+            if self.at_mode:
+                self._exit_at_mode(silent=True)
             self.serial_connection.close()
         
         self.serial_connection = None
@@ -578,22 +585,24 @@ class T900ConfigGUI:
             self.enter_at_button.config(state=tk.NORMAL)
             self.exit_at_button.config(state=tk.DISABLED)
     
-    def _exit_at_mode(self):
+    def _exit_at_mode(self, silent: bool = False):
         """Exit AT command configuration mode and enter data mode using ATA command"""
         if not self.serial_connection or not self.serial_connection.is_open:
-            messagebox.showwarning("Not Connected", "Please connect to a device first")
-            return
+            if not silent:
+                messagebox.showwarning("Not Connected", "Please connect to a device first")
+            return False
         
         if not self.at_mode:
-            messagebox.showinfo("Info", "Device is not in AT command mode")
-            return
+            if not silent:
+                messagebox.showinfo("Info", "Device is not in AT command mode")
+            return False
         
         try:
             self._log_console("Exiting AT command mode...")
             self.status_label.config(text="Exiting AT mode...", foreground="orange")
             
             # Send ATA command to exit AT mode
-            response = self._send_command("ATA", append_cr=True)
+            response = self._send_command("ATA", append_cr=True, suppress_ui_errors=silent)
             
             if response:
                 # Check for success indicators
@@ -603,7 +612,8 @@ class T900ConfigGUI:
                     self.enter_at_button.config(state=tk.NORMAL)
                     self.exit_at_button.config(state=tk.DISABLED)
                     self._log_console("✓ Successfully exited AT command mode (entered data mode)")
-                    messagebox.showinfo("Success", "Exited AT command mode and entered data mode")
+                    if not silent:
+                        messagebox.showinfo("Success", "Exited AT command mode and entered data mode")
                 else:
                     # Even if no OK response, assume it worked if we got a response
                     self.at_mode = False
@@ -611,6 +621,8 @@ class T900ConfigGUI:
                     self.enter_at_button.config(state=tk.NORMAL)
                     self.exit_at_button.config(state=tk.DISABLED)
                     self._log_console("✓ Exited AT command mode (entered data mode)")
+                    if not silent:
+                        messagebox.showinfo("Success", "Exited AT command mode and entered data mode")
             else:
                 # No response, but assume it worked
                 self.at_mode = False
@@ -618,13 +630,19 @@ class T900ConfigGUI:
                 self.enter_at_button.config(state=tk.NORMAL)
                 self.exit_at_button.config(state=tk.DISABLED)
                 self._log_console("✓ Exited AT command mode (entered data mode)")
+                if not silent:
+                    messagebox.showinfo("Success", "Exited AT command mode and entered data mode")
                 
         except Exception as e:
             error_msg = f"Error exiting AT mode: {str(e)}"
             self._log_console(f"ERROR: {error_msg}")
-            messagebox.showerror("Error", error_msg)
+            if not silent:
+                messagebox.showerror("Error", error_msg)
+            return False
+        
+        return True
     
-    def _send_command(self, command: str, append_cr=True) -> Optional[str]:
+    def _send_command(self, command: str, append_cr=True, suppress_ui_errors: bool = False) -> Optional[str]:
         """Send AT command and return response"""
         if not self.serial_connection or not self.serial_connection.is_open:
             messagebox.showwarning("Not Connected", "Please connect to a device first")
@@ -656,7 +674,8 @@ class T900ConfigGUI:
         except Exception as e:
             error_msg = f"Error sending command: {str(e)}"
             self._log_console(f"ERROR: {error_msg}")
-            messagebox.showerror("Error", error_msg)
+            if not suppress_ui_errors:
+                messagebox.showerror("Error", error_msg)
             return None
     
     def _send_console_command(self):
@@ -684,19 +703,40 @@ class T900ConfigGUI:
             self._log_info(response)
             self._log_info("\n=== End of Parameters ===")
     
+    def _extract_register_value(self, response: str) -> Optional[str]:
+        """Extract register value from ATS response"""
+        if not response:
+            return None
+        lines = [line.strip() for line in response.splitlines() if line.strip()]
+        for line in lines:
+            if '=' in line:
+                return line.split('=', 1)[1].strip()
+        return lines[0] if lines else None
+    
+    def _apply_register_value(self, reg_name: str, value: str):
+        """Set the GUI widget to the parsed register value"""
+        widget_info = self.register_widgets.get(reg_name)
+        if not widget_info:
+            return
+        
+        display_value = value
+        if widget_info['type'] == 'choice':
+            for option in widget_info.get('values', []):
+                code = option.split(' - ')[0].strip()
+                if code == value.strip():
+                    display_value = option
+                    break
+        widget_info['var'].set(display_value)
+    
     def _read_register(self, reg_name: str):
         """Read a single register"""
         command = f"ATS{reg_name[1:]}?"
         response = self._send_command(command)
         if response:
-            # Parse response (format: Sxxx=yyy)
-            try:
-                if '=' in response:
-                    value = response.split('=')[1].strip()
-                    self.register_widgets[reg_name]['var'].set(value)
-                    self._log_info(f"{reg_name} = {value}")
-            except:
-                pass
+            value = self._extract_register_value(response)
+            if value is not None:
+                self._apply_register_value(reg_name, value)
+                self._log_info(f"{reg_name} = {value}")
     
     def _write_register(self, reg_name: str):
         """Write a single register"""
@@ -733,9 +773,8 @@ class T900ConfigGUI:
         """Read all readable registers"""
         self._log_info("=== Reading All Registers ===\n")
         for reg_name in self.register_widgets:
-            if self.registers[reg_name]['type'] != 'readonly':
-                self._read_register(reg_name)
-                time.sleep(0.1)
+            self._read_register(reg_name)
+            time.sleep(0.1)
         self._log_info("\n=== Finished Reading ===")
     
     def _write_all_registers(self):
