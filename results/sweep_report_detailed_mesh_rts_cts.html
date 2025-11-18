@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>T900 Sweep Test Results</title>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .graph-container {
+            margin: 30px 0;
+        }
+        .graph-title {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>T900 Sweep Test Results</h1>
+        <div class="info">
+            <p><strong>Vary Mode:</strong> both</p>
+            <p><strong>Number of Packets:</strong> 10</p>
+            <p><strong>Repeats:</strong> 1</p>
+            <p><strong>Total Tests:</strong> 42</p>
+        </div>
+
+        <div class="graph-container">
+            <div class="graph-title">Data Rate (kbps)</div>
+            <div id="speed-graph"></div>
+            <script>
+                var data = [{"x": [128, 256, 512, 1024, 2048, 4096], "y": [17.738526332309764, 29.658645354939694, 26.281973739243508, 32.49495063585991, 32.47748924033194, 36.25938571531839], "type": "scatter", "mode": "lines+markers", "name": "Speed Valid - freq=0.010000s", "marker": {"color": "green"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [20.121278102073514, 40.489261977418224, 0.0, 0.0, 0.0, 0.0], "type": "scatter", "mode": "lines+markers", "name": "Speed Valid - freq=0.050000s", "marker": {"color": "blue"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [10.110422891960775, 20.25714887537773, 0.0, 0.0, 0.0, 0.0], "type": "scatter", "mode": "lines+markers", "name": "Speed Valid - freq=0.100000s", "marker": {"color": "red"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [5.363635790996192, 10.751637280303202, 21.445118906475354, 0.0, 0.0, 0.0], "type": "scatter", "mode": "lines+markers", "name": "Speed Valid - freq=0.200000s", "marker": {"color": "orange"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [2.7605692176384427, 5.519541279575634, 11.033233717074008, 22.06267154275112, 0.0, 0.0], "type": "scatter", "mode": "lines+markers", "name": "Speed Valid - freq=0.400000s", "marker": {"color": "purple"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [1.4183746722522323, 2.800129410644876, 5.6002352716521075, 11.198015357627932, 22.39417911673452, 39.74458158008921], "type": "scatter", "mode": "lines+markers", "name": "Speed Valid - freq=0.800000s", "marker": {"color": "brown"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [1.1352180535247098, 2.2465666738989754, 4.48967237712218, 8.975922132289902, 17.96872777876123, 35.551762293892494], "type": "scatter", "mode": "lines+markers", "name": "Speed Valid - freq=1.000000s", "marker": {"color": "pink"}}];
+                var layout = {
+                    title: 'Data Rate vs Packet Size (bytes)',
+                    xaxis: { title: 'Packet Size (bytes)' },
+                    yaxis: { title: 'Data Rate (kbps)' }
+                };
+                Plotly.newPlot('speed-graph', data, layout);
+            </script>
+        </div>
+
+        <div class="graph-container">
+            <div class="graph-title">Latency (ms)</div>
+            <div id="latency-graph"></div>
+            <script>
+                var data = [{"x": [128, 256, 512, 1024, 2048, 4096], "y": [85.56938171386719, 138.10735278659396, 188.1486177444458, 318.8815116882324, 610.1241509119669, 1180.9067726135254], "type": "scatter", "mode": "lines+markers", "name": "Avg Latency - freq=0.010000s", "marker": {"color": "blue"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [63.43398888905843, 94.87268129984538, 0, 0, 0, 0], "type": "scatter", "mode": "lines+markers", "name": "Avg Latency - freq=0.050000s", "marker": {"color": "red"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [65.71016311645508, 87.1228853861491, 0, 0, 0, 0], "type": "scatter", "mode": "lines+markers", "name": "Avg Latency - freq=0.100000s", "marker": {"color": "green"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [63.805691401163735, 93.60545476277669, 133.70882670084634, 0, 0, 0], "type": "scatter", "mode": "lines+markers", "name": "Avg Latency - freq=0.200000s", "marker": {"color": "orange"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [64.55043951670329, 93.42726866404216, 133.60437552134195, 244.50113773345947, 0, 0], "type": "scatter", "mode": "lines+markers", "name": "Avg Latency - freq=0.400000s", "marker": {"color": "purple"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [63.57871691385905, 84.87873872121175, 130.6628147761027, 247.70334561665854, 445.65332730611163, 920.4790150677717], "type": "scatter", "mode": "lines+markers", "name": "Avg Latency - freq=0.800000s", "marker": {"color": "brown"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [68.86671384175618, 94.29482618967693, 131.70045216878256, 247.84023761749268, 454.6885887781779, 857.4020862579346], "type": "scatter", "mode": "lines+markers", "name": "Avg Latency - freq=1.000000s", "marker": {"color": "pink"}}];
+                var layout = {
+                    title: 'Latency vs Packet Size (bytes)',
+                    xaxis: { title: 'Packet Size (bytes)' },
+                    yaxis: { title: 'Latency (ms)' }
+                };
+                Plotly.newPlot('latency-graph', data, layout);
+            </script>
+        </div>
+
+        <div class="graph-container">
+            <div class="graph-title">Packet Loss (%)</div>
+            <div id="packet-loss-graph"></div>
+            <script>
+                var data = [{"x": [128, 256, 512, 1024, 2048, 4096], "y": [80.0, 70.0, 80.0, 80.0, 80.0, 80.0], "type": "scatter", "mode": "lines+markers", "name": "Packet Loss - freq=0.010000s", "marker": {"color": "red"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [0.0, 0.0, 100.0, 100.0, 100.0, 100.0], "type": "scatter", "mode": "lines+markers", "name": "Packet Loss - freq=0.050000s", "marker": {"color": "blue"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [0.0, 0.0, 100.0, 100.0, 100.0, 100.0], "type": "scatter", "mode": "lines+markers", "name": "Packet Loss - freq=0.100000s", "marker": {"color": "green"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [0.0, 0.0, 0.0, 100.0, 100.0, 100.0], "type": "scatter", "mode": "lines+markers", "name": "Packet Loss - freq=0.200000s", "marker": {"color": "orange"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [0.0, 0.0, 0.0, 0.0, 100.0, 100.0], "type": "scatter", "mode": "lines+markers", "name": "Packet Loss - freq=0.400000s", "marker": {"color": "purple"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [0.0, 0.0, 0.0, 0.0, 0.0, 10.0], "type": "scatter", "mode": "lines+markers", "name": "Packet Loss - freq=0.800000s", "marker": {"color": "brown"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "type": "scatter", "mode": "lines+markers", "name": "Packet Loss - freq=1.000000s", "marker": {"color": "pink"}}];
+                var layout = {
+                    title: 'Packet Loss vs Packet Size (bytes)',
+                    xaxis: { title: 'Packet Size (bytes)' },
+                    yaxis: { title: 'Packet Loss (%)' }
+                };
+                Plotly.newPlot('packet-loss-graph', data, layout);
+            </script>
+        </div>
+
+        <div class="graph-container">
+            <div class="graph-title">Packet Corruption (%)</div>
+            <div id="corruption-graph"></div>
+            <script>
+                var data = [{"x": [128, 256, 512, 1024, 2048, 4096], "y": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "type": "scatter", "mode": "lines+markers", "name": "Corruption - freq=0.010000s", "marker": {"color": "purple"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [0.0, 0.0, 0, 0, 0, 0], "type": "scatter", "mode": "lines+markers", "name": "Corruption - freq=0.050000s", "marker": {"color": "blue"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [0.0, 0.0, 0, 0, 0, 0], "type": "scatter", "mode": "lines+markers", "name": "Corruption - freq=0.100000s", "marker": {"color": "red"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [0.0, 0.0, 0.0, 0, 0, 0], "type": "scatter", "mode": "lines+markers", "name": "Corruption - freq=0.200000s", "marker": {"color": "green"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [0.0, 0.0, 0.0, 0.0, 0, 0], "type": "scatter", "mode": "lines+markers", "name": "Corruption - freq=0.400000s", "marker": {"color": "orange"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "type": "scatter", "mode": "lines+markers", "name": "Corruption - freq=0.800000s", "marker": {"color": "brown"}}, {"x": [128, 256, 512, 1024, 2048, 4096], "y": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "type": "scatter", "mode": "lines+markers", "name": "Corruption - freq=1.000000s", "marker": {"color": "pink"}}];
+                var layout = {
+                    title: 'Corruption vs Packet Size (bytes)',
+                    xaxis: { title: 'Packet Size (bytes)' },
+                    yaxis: { title: 'Corruption (%)' }
+                };
+                Plotly.newPlot('corruption-graph', data, layout);
+            </script>
+        </div>
+
+    </div>
+</body>
+</html>

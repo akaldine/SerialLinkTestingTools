@@ -1,4 +1,21 @@
-# Tianze T900 Radio Configuration Tool
+# Tianze T900 Application Suite
+
+This repository now contains several related GUI tools for Tianze T900 radios. Project files are grouped under `apps/`:
+
+- `apps/config/` – AT command configuration utility (Tkinter)
+- `apps/data_rate/tk/` – legacy Tkinter-based data-rate tester and sweep tool
+- `apps/data_rate/qt/` – PyQt5 data-rate tester with MVVM architecture and sweep dialog
+- `results/` – captured sweep logs, HTML reports, and related analysis outputs
+
+Install dependencies once via:
+
+```bash
+pip install -r requirements.txt
+```
+
+## Applications
+
+### Config GUI (Tkinter)
 
 A graphical user interface (GUI) application for configuring Tianze T900 radio modules via AT commands.
 
@@ -27,7 +44,7 @@ A graphical user interface (GUI) application for configuring Tianze T900 radio m
 
 1. Run the application:
    ```bash
-   python t900_config_gui.py
+   python apps/config/t900_config_gui.py
    ```
 
 2. **Connect to Device**:
@@ -133,11 +150,35 @@ A graphical user interface (GUI) application for configuring Tianze T900 radio m
 - `AT&Fn` - Load factory default (n = 4,5,7-12)
 - `ATA` - Exit AT command mode and enter data mode
 
-## License
+# Data Rate Test Applications
 
-This tool is provided as-is for configuring Tianze T900 radio modules.
+### Tkinter Version
+- Files: `apps/data_rate/tk/t900_data_rate_test.py`, `t900_sweep_test.py`, `t900_sweep_test_gui.py`
+- Launch data-rate tester:
+  ```bash
+  python apps/data_rate/tk/t900_data_rate_test.py
+  ```
+- Launch sweep tester UI:
+  ```bash
+  python apps/data_rate/tk/t900_sweep_test_gui.py
+  ```
 
-## References
+### PyQt5 Version
+- Files: `apps/data_rate/qt/t900_data_rate_test_qt.py`, `t900_viewmodel.py`, `t900_sweep_test_qt.py`, `t900_sweep_test_qt_gui.py`
+- Launch MVVM Qt tester:
+  ```bash
+  python apps/data_rate/qt/t900_data_rate_test_qt.py
+  ```
+- Launch sweep dialog from within the Qt app via the **Sweep Test** button, or run directly:
+  ```bash
+  python apps/data_rate/qt/t900_sweep_test_qt_gui.py
+  ```
+
+# License
+
+This toolset is provided as-is for working with Tianze T900 radio modules.
+
+# References
 
 - Tianze T900 Radio Module Manual
 - Zhejiang Tianze Communication Technology Co., Ltd. - www.okseeker.com
