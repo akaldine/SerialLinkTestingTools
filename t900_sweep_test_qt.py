@@ -11,6 +11,7 @@ from collections import defaultdict
 from typing import Dict, List, Optional, Tuple
 
 from PyQt5.QtWidgets import QApplication
+from t900_viewmodel import TestConfig
 
 
 class SweepTestConfig:
@@ -141,39 +142,45 @@ class QtSweepTestRunner:
     def _run_single_test(self, packet_size: int, write_freq: float) -> Optional[Dict]:
         """Configure and run a single test from the sweep"""
         try:
-            # Configure GUI for packet-count mode
+            # Get ViewModel from main GUI
+            viewmodel = self.main_gui.viewmodel
+            
+            # Configure test via ViewModel
+            config = TestConfig()
+            config.mode = "Packet-Count"
+            config.total_size = packet_size
+            config.write_freq = write_freq
+            config.target_packets = self.config.num_packets
+            config.test_length = None
+            
+            # Update GUI to reflect the configuration (for user visibility)
             self.main_gui.input_mode_combo.setCurrentText("Packet-Count")
-            self._process_events()
-
             self.main_gui.packet_count_size_edit.setText(str(packet_size))
             self.main_gui.packet_count_freq_edit.setText(f"{write_freq:.6f}")
             self.main_gui.num_packets_edit.setText(str(self.config.num_packets))
             self.main_gui._update_packet_count_calculations()
             self._process_events()
 
-            # Clear buffers
-            self.main_gui._clear_serial_buffers()
-            time.sleep(0.1)
-
-            # Start test
-            self.main_gui._start_test()
+            # Start test via ViewModel
+            viewmodel.start_test(config)
 
             # Wait for completion
             max_wait = 300
             wait_time = 0
-            while self.main_gui.test_running and wait_time < max_wait and self.is_running:
+            while viewmodel.test_running and wait_time < max_wait and self.is_running:
                 time.sleep(0.1)
                 wait_time += 0.1
                 self._process_events()
 
             if wait_time >= max_wait:
-                self.main_gui._stop_test()
+                viewmodel.stop_test()
                 return None
 
             # Ensure final calculations are done
             calc_wait = 0
             while calc_wait < 3.0:
-                stats = self.main_gui.stats
+                viewmodel.update_statistics()
+                stats = viewmodel.stats
                 elapsed = stats.get('elapsed_time')
                 if elapsed is not None and elapsed > 0 and stats.get('data_rate_total_bps') is not None:
                     break
@@ -181,7 +188,10 @@ class QtSweepTestRunner:
                 time.sleep(0.1)
                 calc_wait += 0.1
 
-            stats = self.main_gui.stats
+            # Get final stats from ViewModel
+            viewmodel.update_statistics()
+            stats = viewmodel.stats
+            receiver_stats = viewmodel.receiver_stats
 
             result: Dict = {
                 'packet_size': packet_size,
@@ -200,7 +210,7 @@ class QtSweepTestRunner:
             result['send_rate_bps'] = stats.get('send_rate_bps') or 0
 
             latencies = []
-            for rstat in getattr(self.main_gui, 'receiver_stats', []):
+            for rstat in receiver_stats:
                 latencies.extend(list(rstat['latency_samples']))
 
             if latencies:

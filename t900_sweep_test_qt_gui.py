@@ -177,13 +177,16 @@ class SweepTestDialog(QDialog):
             return None
 
     def _validate_connections(self) -> bool:
-        if not (self.main_gui.sender_connection and self.main_gui.sender_connection.is_open):
+        viewmodel = self.main_gui.viewmodel
+        if not viewmodel.is_sender_connected():
             QMessageBox.critical(self, "Error", "Sender not connected")
             return False
-        for idx, conn in enumerate(self.main_gui.receiver_connections):
-            if conn is None or not conn.is_open:
-                QMessageBox.critical(self, "Error", f"Receiver {idx + 1} not connected")
-                return False
+        if not viewmodel.are_all_receivers_connected():
+            for idx in range(viewmodel.num_receivers):
+                if (viewmodel.receiver_connections[idx] is None or 
+                    not viewmodel.receiver_connections[idx].is_open):
+                    QMessageBox.critical(self, "Error", f"Receiver {idx + 1} not connected")
+                    return False
         return True
 
     def _start_sweep(self):
