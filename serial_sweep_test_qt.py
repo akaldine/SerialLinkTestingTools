@@ -1,5 +1,5 @@
 """
-Qt Sweep Test Module for T900 Data Rate Testing
+Qt Sweep Test Module for serial data rate testing
 """
 
 import csv
@@ -11,7 +11,7 @@ from collections import defaultdict
 from typing import Dict, List, Optional, Tuple
 
 from PyQt5.QtWidgets import QApplication
-from t900_viewmodel import TestConfig
+from serial_data_rate_viewmodel import TestConfig
 
 
 class SweepTestConfig:
@@ -319,7 +319,7 @@ class QtSweepTestRunner:
         html = f"""<!DOCTYPE html>
 <html>
 <head>
-    <title>T900 Sweep Test Results</title>
+    <title>Serial Data Rate Sweep Results</title>
     <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
     <style>
         body {{
@@ -356,7 +356,7 @@ class QtSweepTestRunner:
 </head>
 <body>
     <div class="container">
-        <h1>T900 Sweep Test Results</h1>
+        <h1>Serial Data Rate Sweep Results</h1>
         <div class="info">
             <p><strong>Vary Mode:</strong> {self.config.vary_mode}</p>
             <p><strong>Number of Packets:</strong> {self.config.num_packets}</p>

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Tianze T900 Data Rate Test Tool (PyQt5 Version)
-Tests end-to-end data rate, packet corruption, and latency between two T900 radios.
+Serial Data Rate Test Tool (PyQt5 Version)
+Tests end-to-end throughput, corruption, and latency for arbitrary serial links.
 """
 
 import sys
@@ -12,18 +12,18 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
 from typing import Optional, List
 
-from t900_viewmodel import T900DataRateViewModel, TestConfig
-from t900_sweep_test_qt_gui import SweepTestDialog
+from serial_data_rate_viewmodel import SerialDataRateViewModel, TestConfig
+from serial_sweep_test_qt_gui import SweepTestDialog
 
 
-class T900DataRateTestQt(QMainWindow):
+class SerialDataRateTestQt(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("T900 Data Rate Test Tool")
+        self.setWindowTitle("Serial Data Rate Test Tool")
         self.setGeometry(100, 100, 1200, 800)
         
         # Create ViewModel
-        self.viewmodel = T900DataRateViewModel(num_receivers=3)
+        self.viewmodel = SerialDataRateViewModel(num_receivers=3)
         
         # Connect ViewModel signals
         self.viewmodel.log_message.connect(self._append_log)
@@ -812,7 +812,7 @@ class T900DataRateTestQt(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    window = T900DataRateTestQt()
+    window = SerialDataRateTestQt()
     window.show()
     sys.exit(app.exec_())
 

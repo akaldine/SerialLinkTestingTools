@@ -1,5 +1,5 @@
 """
-Qt Sweep Test Dialog for T900 Data Rate Tester
+Qt Sweep Test Dialog for serial data rate tester
 """
 
 import os
@@ -23,7 +23,7 @@ from PyQt5.QtWidgets import (
     QApplication,
 )
 
-from t900_sweep_test_qt import QtSweepTestRunner
+from serial_sweep_test_qt import QtSweepTestRunner
 
 
 class SweepTestDialog(QDialog):

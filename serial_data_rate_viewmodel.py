@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-T900 Data Rate Test ViewModel
+Serial Data Rate Test ViewModel
 Encapsulates all application logic, separated from UI concerns.
 """
 
@@ -26,8 +26,8 @@ class TestConfig:
         self.target_packets: Optional[int] = None  # For Packet-Count
 
 
-class T900DataRateViewModel(QObject):
-    """ViewModel for T900 Data Rate Test - encapsulates all business logic"""
+class SerialDataRateViewModel(QObject):
+    """ViewModel for serial link data rate tests - encapsulates all business logic"""
     
     # Signals for UI updates
     log_message = pyqtSignal(str)
